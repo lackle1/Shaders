@@ -3,17 +3,11 @@
     into iChannel0 and iChannel1 respectively.
     Now it only uses iChannel0, but can still be used the original way.
     
-    To properly use, it is probably easiest to download Adam Stevenson's Shadertoy VSCode extension,
-    and change 'getFft' to use the sampler passed in.
-    Make sure the sound files are the same length, or at least start at the same time. I don't know if finish time matters.
-    I would upload my sound files here but I don't know how or if I can.
+    To properly use, uncomment the part in 'getFft'.
+    Make sure the two sound files are the same length, or at least start at the same time. I don't know if finish time matters.
 */
 
-#iChannel0 "file://dazewave-nodrums.wav"
-#iChannel1 "file://dazewave-drums.wav"
-// #iChannel0 "file://dazewave.wav"
-
-// Position,bounds, line thickness. Function for Inigo Quilez
+// Position, bounds, line thickness.
 float sdBoxFrame( vec3 p, vec3 b, float e ) {
     p = abs(p)-b;
     vec3 q = abs(p+e)-e;
@@ -39,7 +33,19 @@ vec3 palette( float t ) {
 }
 
 float getFft(int tx, sampler2D channel) {
-    return max(texelFetch(iChannel0, ivec2(tx, 0), 0).r * .8, texelFetch(iChannel1, ivec2(tx, 0), 0).r * 1.5);
+    // return max(
+    //     texelFetch(iChannel0, ivec2(tx, 0), 0).r * .8, 
+    //     texelFetch(iChannel1, ivec2(tx, 0), 0).r * 1.5);
+    
+    return texelFetch(iChannel0, ivec2(tx, 0), 0).x;
+    
+    float maxFft = 0.;
+    for (int i = 0; i < 512; i++) {
+        float fft = texelFetch(iChannel0, ivec2(i, 0), 0).x;
+        maxFft = max(maxFft, fft);
+    }
+    
+    return maxFft;
 }
 
 float map(vec3 p) {
@@ -56,12 +62,12 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     
     // Initialisation
     vec3 ro = vec3(0, 4.2, -10);                                    // ray origin
-    vec3 rd = normalize(vec3(uv * 0.4, 1));                         // ray direction
+    vec3 rd = normalize(vec3(uv * .4, 1));                         // ray direction
     rd.yz *= rot2D(0.4);
     float distTravelled = 0.;
 
     // Move camera forward with drums
-    float camFft = getFft(20, iChannel1);
+    float camFft = getFft(4, iChannel1);
     vec3 dir = vec3(0, 0, 1);
     dir.yz *= rot2D(0.4);
     ro += dir * camFft * .8;
@@ -86,28 +92,29 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
 
     // Colouring of shape
-    float distFft = getFft(int(closestDist * 80.), iChannel0);
+    float distFft = getFft(int(closestDist * 40.), iChannel0);
     float distFactor = -100. + distTravelled * 0.8;
-    col = palette(normal * 8. * distFft + distFactor * 0.7);
+    col = palette(normal * 8. * distFft + distFactor * .7);
 
     // Brightness of whole screen
     float brightness = 20. / (pow(distTravelled, 1.05));
-    col *= brightness * (.8 + distFft * .2);
+    col *= brightness * (1.4 + distFft * .6);
 
-    // Glow
+    // Cube Glow
     if (closestDist >= 0.001) {
-        float drumFft = getFft(40, iChannel1);
+        float midFft = getFft(40, iChannel1);
         float glow = pow(.04 / closestDist, .3);
-        col += glow * .8;
-        col += glow * drumFft * .5;
+        col += glow * .6;
+        col += glow * midFft * 2.8;
     }
 
-    // Vignette, that also makes things more purple
-    float edgeDist = 1.2 - length(uv);
-    float factor = pow(edgeDist, 2.);
-    col *= factor + 0.5;
-    col.r *= factor + .3;
-    col.g *= factor;
+    // Vignette, that also messes with colours
+    float centerDist = length(uv);
+    float factor = 1. - smoothstep(centerDist * 1.5, 0., 1.);
+    col *= factor;
+    col.r *= .4 + factor * getFft(200, iChannel0) * .6;
+    col.g *= factor * .6;
+
 
     // Contrast
     col = ((col - 0.5) * 1.2) + 0.5;
