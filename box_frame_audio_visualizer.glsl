@@ -94,7 +94,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     // Colouring of shape
     float distFft = getFft(int(closestDist * 40.), iChannel0);
     float distFactor = -100. + distTravelled * 0.8;
-    col = palette(normal * 8. * distFft + distFactor * .7);
+    col = palette(normal * 5. * (.5 + distFft));
 
     // Brightness of whole screen
     float brightness = 20. / (pow(distTravelled, 1.05));
@@ -102,7 +102,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
     // Cube Glow
     if (closestDist >= 0.001) {
-        float midFft = getFft(40, iChannel1);
+        float midFft = getFft(35, iChannel1);
         float glow = pow(.04 / closestDist, .3);
         col += glow * .6;
         col += glow * midFft * 2.8;
@@ -110,9 +110,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
     // Vignette, that also messes with colours
     float centerDist = length(uv);
-    float factor = 1. - smoothstep(centerDist * 1.5, 0., 1.);
+    float factor = 1. - smoothstep(centerDist * 2., 0., 1.);
     col *= factor;
-    col.r *= .4 + factor * getFft(200, iChannel0) * .6;
+    col.r *= .4 + factor * getFft(200, iChannel0) * .8;
     col.g *= factor * .6;
 
 
